@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useLifeGraphStore } from '../store/useLifeGraphStore';
-import { CheckCircle, Plus, Calendar, Link as LinkIcon } from 'lucide-react';
+import { CheckCircle, Plus, Calendar, Link as LinkIcon, Flame, Trophy } from 'lucide-react';
+import { calculateStreak } from '../lib/streakUtils';
 
 export function Habits() {
   const { habits, metrics, relationships, addHabit, addRelationship, logHabit, habitLogs } = useLifeGraphStore();
@@ -17,12 +18,6 @@ export function Habits() {
     e.preventDefault();
     if (!newHabit.name) return;
     
-    // In a real app, we'd add the habit, get its ID, then add the relationship.
-    // For this mock, we'll just add the habit. The store generates an ID.
-    // To properly link it, we'd need a slightly different store action that returns the ID,
-    // or we can just add the habit for now.
-    
-    // Hack for mock: generate ID here to use for both
     const habitId = Math.random().toString(36).substring(2, 9);
     
     addHabit({
@@ -128,6 +123,7 @@ export function Habits() {
         {habits.map(habit => {
           const isCompleted = todayLogs.some(log => log.habit_id === habit.id);
           const relatedRels = relationships.filter(r => r.source_type === 'habit' && r.source_id === habit.id);
+          const { current, longest } = calculateStreak(habit.id, habitLogs);
           
           return (
             <div key={habit.id} className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6 hover:border-zinc-700 transition-colors flex flex-col">
@@ -150,6 +146,17 @@ export function Habits() {
                 >
                   <CheckCircle className="w-6 h-6" />
                 </button>
+              </div>
+              
+              <div className="flex gap-4 mb-4">
+                <div className="flex items-center text-orange-400">
+                  <Flame className="w-4 h-4 mr-1" />
+                  <span className="font-bold">{current}</span>
+                </div>
+                <div className="flex items-center text-yellow-500">
+                  <Trophy className="w-4 h-4 mr-1" />
+                  <span className="font-bold">{longest}</span>
+                </div>
               </div>
               
               <div className="mt-auto pt-4 border-t border-zinc-800/50">
