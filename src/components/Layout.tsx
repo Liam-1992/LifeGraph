@@ -1,5 +1,5 @@
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { Activity, BarChart2, CheckCircle, Network, Target, User, BookOpen, FileText, Book, Bot } from 'lucide-react';
+import { Activity, BarChart2, CheckCircle, Network, Target, User, BookOpen, FileText, Book, Bot, Folder } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -11,6 +11,7 @@ const navigation = [
   { name: 'Dashboard', href: '/', icon: Activity },
   { name: 'AI Coach', href: '/ai-coach', icon: Bot },
   { name: 'Metrics', href: '/metrics', icon: BarChart2 },
+  { name: 'Categories', href: '/categories', icon: Folder },
   { name: 'Habits', href: '/habits', icon: CheckCircle },
   { name: 'Goals', href: '/goals', icon: Target },
   { name: 'Resources', href: '/resources', icon: BookOpen },

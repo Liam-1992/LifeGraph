@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useLifeGraphStore } from '../store/useLifeGraphStore';
-import { BarChart2, Plus, TrendingUp, Activity, Bot, Loader2, X } from 'lucide-react';
+import { BarChart2, Plus, TrendingUp, Activity, Bot, Loader2, X, Sparkles } from 'lucide-react';
 import { aiCoachService } from '../services/aiCoach';
 import ReactMarkdown from 'react-markdown';
+import { suggestCategorization } from '../services/aiService';
 
 function MetricAICoach({ metricName, onClose }: { metricName: string, onClose: () => void }) {
   const [advice, setAdvice] = useState<string | null>(null);
@@ -59,12 +60,47 @@ function MetricAICoach({ metricName, onClose }: { metricName: string, onClose: (
 }
 
 export function Metrics() {
-  const { metrics, addMetric, categories: storeCategories } = useLifeGraphStore();
+  const { metrics, addMetric, categories: storeCategories, addCategory } = useLifeGraphStore();
   const [isAdding, setIsAdding] = useState(false);
   const [newMetric, setNewMetric] = useState({ name: '', category_id: '', measurement_type: 'numeric' as const });
   const [activeMetricAI, setActiveMetricAI] = useState<string | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
 
   const categories = storeCategories;
+
+  const handleAiSuggest = async () => {
+    if (!newMetric.name) return;
+    setAiLoading(true);
+    try {
+      const result = await suggestCategorization(newMetric.name, 'metric', categories.map(c => ({ id: c.id, name: c.name })));
+      
+      let finalCategoryId = result.categoryId;
+      
+      if (!finalCategoryId && result.newCategoryName) {
+        const existing = categories.find(c => c.name.toLowerCase() === result.newCategoryName.toLowerCase());
+        if (existing) {
+          finalCategoryId = existing.id;
+        } else {
+          addCategory({
+            user_id: 'user-1',
+            name: result.newCategoryName,
+            parent_id: null,
+            framework: null,
+            color: null,
+            icon: null
+          });
+        }
+      }
+
+      setNewMetric(prev => ({
+        ...prev,
+        category_id: finalCategoryId || prev.category_id
+      }));
+    } catch (error) {
+      console.error('AI Suggestion error:', error);
+    }
+    setAiLoading(false);
+  };
 
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,7 +115,9 @@ export function Metrics() {
       data_source: 'manual',
       notes: null,
       decay_rate: 0,
-      formula: null
+      formula: null,
+      color: null,
+      icon: null
     });
     
     setNewMetric({ name: '', category_id: '', measurement_type: 'numeric' });
@@ -108,13 +146,24 @@ export function Metrics() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-zinc-400 mb-1">Name</label>
-              <input 
-                type="text" 
-                value={newMetric.name}
-                onChange={e => setNewMetric({...newMetric, name: e.target.value})}
-                className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                placeholder="e.g. Focus"
-              />
+              <div className="relative">
+                <input 
+                  type="text" 
+                  value={newMetric.name}
+                  onChange={e => setNewMetric({...newMetric, name: e.target.value})}
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2 pr-10 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  placeholder="e.g. Focus"
+                />
+                <button
+                  type="button"
+                  onClick={handleAiSuggest}
+                  disabled={aiLoading || !newMetric.name}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-emerald-400 hover:text-emerald-300 disabled:text-zinc-600 transition-colors"
+                  title="AI Suggest Category"
+                >
+                  {aiLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-zinc-400 mb-1">Category</label>

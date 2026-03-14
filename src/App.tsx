@@ -14,6 +14,7 @@ import { Login } from './pages/Login';
 import { Resources } from './pages/Resources';
 import { Notes } from './pages/Notes';
 import { Journal } from './pages/Journal';
+import { Categories } from './pages/Categories';
 import { AICoach } from './pages/AICoach';
 
 export default function App() {
@@ -24,6 +25,7 @@ export default function App() {
         <Route path="/" element={<Layout />}>
           <Route index element={<Dashboard />} />
           <Route path="metrics" element={<Metrics />} />
+          <Route path="categories" element={<Categories />} />
           <Route path="habits" element={<Habits />} />
           <Route path="goals" element={<Goals />} />
           <Route path="resources" element={<Resources />} />

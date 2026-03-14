@@ -38,7 +38,7 @@ export function AICoach() {
       const userData = {
         metrics: metrics.map(m => ({ name: m.name, value: m.current_value })),
         habits: habits.map(h => ({ name: h.name, frequency: h.frequency })),
-        goals: goals.map(g => ({ name: g.name, target: g.target_value })),
+        goals: goals.map(g => ({ name: g.name, target: 'Multi-metric' })),
         recentHabitLogs: recentHabitLogs.map(l => ({ habitId: l.habit_id, date: l.completed_at })),
         recentMetricLogs: recentMetricLogs.map(l => ({ metricId: l.metric_id, value: l.value, date: l.recorded_at }))
       };

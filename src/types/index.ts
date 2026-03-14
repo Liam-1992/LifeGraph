@@ -4,6 +4,8 @@ export type Category = {
   name: string;
   parent_id: string | null;
   framework: string | null;
+  color: string | null;
+  icon: string | null;
   created_at: string;
 };
 
@@ -18,6 +20,8 @@ export type Metric = {
   current_value: number;
   decay_rate: number;
   formula: string | null;
+  color: string | null;
+  icon: string | null;
   created_at: string;
 };
 
@@ -26,6 +30,9 @@ export type Habit = {
   user_id: string;
   name: string;
   frequency: string;
+  category_id?: string | null;
+  color: string | null;
+  icon: string | null;
   created_at: string;
 };
 
@@ -34,8 +41,20 @@ export type Goal = {
   user_id: string;
   name: string;
   description: string;
-  target_metric_id: string;
+  category_id?: string | null;
+  target_date: string | null;
+  color: string | null;
+  icon: string | null;
+  created_at: string;
+};
+
+export type GoalMetric = {
+  id: string;
+  goal_id: string;
+  metric_id: string;
   target_value: number;
+  initial_value: number;
+  weight: number;
   created_at: string;
 };
 
@@ -43,6 +62,7 @@ export type Resource = {
   id: string;
   user_id: string;
   title: string;
+  category_id?: string | null;
   url: string | null;
   description: string | null;
   type: 'book' | 'article' | 'video' | 'course' | 'tool' | 'paper';
@@ -54,6 +74,7 @@ export type Note = {
   id: string;
   user_id: string;
   content: string;
+  category_id?: string | null;
   tags: string[];
   created_at: string;
   updated_at: string;
