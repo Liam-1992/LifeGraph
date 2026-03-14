@@ -42,6 +42,7 @@ interface LifeGraphState {
   deleteHabit: (id: string) => void;
   deleteGoal: (id: string) => void;
   deleteMetric: (id: string) => void;
+  deleteResource: (id: string) => void;
   
   // Logic
   applyDecay: () => void;
@@ -274,6 +275,11 @@ export const useLifeGraphStore = create<LifeGraphState>()(
         goalMetrics: state.goalMetrics.filter((gm) => gm.metric_id !== id),
         relationships: state.relationships.filter((r) => r.source_id !== id && r.target_id !== id),
         metricLogs: state.metricLogs.filter((l) => l.metric_id !== id)
+      })),
+
+      deleteResource: (id) => set((state) => ({
+        resources: state.resources.filter((r) => r.id !== id),
+        relationships: state.relationships.filter((r) => r.source_id !== id && r.target_id !== id)
       })),
 
       applyDecay: () => set((state) => {

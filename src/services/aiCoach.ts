@@ -27,7 +27,7 @@ export const aiCoachService = {
       [Provide a brief analysis of their current situation based on the data.]
       
       ### Recommendations
-      [Provide 3 actionable recommendations as a bulleted list. Clearly present specific metric targets (e.g., "- Increase Focus to 8").]
+      [Provide 3 actionable recommendations as a bulleted list. Clearly present specific metric targets (e.g., "- Increase Focus to 8"). Ensure metrics are general human stats (like Strength, Intelligence, Charisma, Endurance, Focus, etc.), not specific game statistics.]
       
       ### Suggested Habits
       [Suggest habits to focus on as a bulleted list. Clearly present habit frequencies (e.g., "- Meditation: 10 mins daily").]

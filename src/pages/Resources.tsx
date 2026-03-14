@@ -1,13 +1,73 @@
 import React, { useState } from 'react';
 import { useLifeGraphStore } from '../store/useLifeGraphStore';
-import { BookOpen, Plus, ExternalLink, Tag } from 'lucide-react';
+import { BookOpen, Plus, ExternalLink, Tag, Bot, Loader2, Trash2 } from 'lucide-react';
+import { categorizeMultipleResources, cleanupResourcesWithAI } from '../services/aiService';
 
 export function Resources() {
-  const { resources, addResource } = useLifeGraphStore();
+  const { resources, addResource, updateResource, deleteResource, categories, addCategory } = useLifeGraphStore();
   const [isAdding, setIsAdding] = useState(false);
+  const [isCategorizing, setIsCategorizing] = useState(false);
+  const [isCleaningUp, setIsCleaningUp] = useState(false);
   const [newResource, setNewResource] = useState({ title: '', url: '', description: '', type: 'book' as const, tags: '' });
 
   const userId = 'user-1';
+
+  const handleCategorize = async () => {
+    if (resources.length === 0) return;
+    setIsCategorizing(true);
+    try {
+      const resourcesToCategorize = resources.map(r => ({ id: r.id, title: r.title, type: r.type }));
+      const existingCategories = categories.map(c => ({ id: c.id, name: c.name }));
+      
+      const results = await categorizeMultipleResources(resourcesToCategorize, existingCategories);
+      
+      results.forEach((result: any) => {
+        let categoryId = result.categoryId;
+        
+        if (result.newCategoryName && !categoryId) {
+          categoryId = addCategory({
+            user_id: userId,
+            name: result.newCategoryName,
+            parent_id: null,
+            framework: null,
+            color: '#6366f1',
+            icon: 'folder'
+          });
+        }
+        
+        if (categoryId) {
+          updateResource(result.resourceId, { category_id: categoryId });
+        }
+      });
+    } catch (error) {
+      console.error('Failed to categorize resources:', error);
+    }
+    setIsCategorizing(false);
+  };
+
+  const handleCleanup = async () => {
+    if (resources.length === 0) return;
+    setIsCleaningUp(true);
+    try {
+      const resourcesToEvaluate = resources.map(r => ({ 
+        id: r.id, 
+        title: r.title, 
+        description: r.description, 
+        type: r.type 
+      }));
+      
+      const idsToKeep = await cleanupResourcesWithAI(resourcesToEvaluate);
+      
+      resources.forEach(r => {
+        if (!idsToKeep.includes(r.id)) {
+          deleteResource(r.id);
+        }
+      });
+    } catch (error) {
+      console.error('Failed to cleanup resources:', error);
+    }
+    setIsCleaningUp(false);
+  };
 
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,13 +93,31 @@ export function Resources() {
           <h1 className="text-3xl font-bold tracking-tight text-white">Resources</h1>
           <p className="text-zinc-400 mt-1">Knowledge base for your personal development.</p>
         </div>
-        <button 
-          onClick={() => setIsAdding(!isAdding)}
-          className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg font-medium flex items-center transition-colors"
-        >
-          <Plus className="w-5 h-5 mr-2" />
-          Add Resource
-        </button>
+        <div className="flex gap-3">
+          <button 
+            onClick={handleCleanup}
+            disabled={isCleaningUp || resources.length === 0}
+            className="bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50 text-white px-4 py-2 rounded-lg font-medium flex items-center transition-colors"
+          >
+            {isCleaningUp ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <Trash2 className="w-5 h-5 mr-2 text-rose-400" />}
+            Cleanup
+          </button>
+          <button 
+            onClick={handleCategorize}
+            disabled={isCategorizing || resources.length === 0}
+            className="bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50 text-white px-4 py-2 rounded-lg font-medium flex items-center transition-colors"
+          >
+            {isCategorizing ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <Bot className="w-5 h-5 mr-2 text-indigo-400" />}
+            Categorize
+          </button>
+          <button 
+            onClick={() => setIsAdding(!isAdding)}
+            className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg font-medium flex items-center transition-colors"
+          >
+            <Plus className="w-5 h-5 mr-2" />
+            Add Resource
+          </button>
+        </div>
       </header>
 
       {isAdding && (
@@ -114,9 +192,22 @@ export function Resources() {
           <div key={resource.id} className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6 hover:border-zinc-700 transition-colors flex flex-col">
             <div className="flex justify-between items-start mb-2">
               <h3 className="text-lg font-medium text-white">{resource.title}</h3>
-              <span className="bg-zinc-800 text-zinc-400 text-xs px-2 py-1 rounded-md uppercase tracking-wider">
-                {resource.type}
-              </span>
+              <div className="flex gap-2 items-center">
+                {resource.category_id && (
+                  <span className="bg-indigo-500/10 text-indigo-400 text-xs px-2 py-1 rounded-md uppercase tracking-wider">
+                    {categories.find(c => c.id === resource.category_id)?.name || 'Categorized'}
+                  </span>
+                )}
+                <span className="bg-zinc-800 text-zinc-400 text-xs px-2 py-1 rounded-md uppercase tracking-wider">
+                  {resource.type}
+                </span>
+                <button 
+                  onClick={() => deleteResource(resource.id)}
+                  className="text-zinc-500 hover:text-rose-400 transition-colors"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
             </div>
             <p className="text-sm text-zinc-400 mb-4 flex-1">{resource.description}</p>
             

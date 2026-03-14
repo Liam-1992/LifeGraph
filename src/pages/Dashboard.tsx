@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useLifeGraphStore } from '../store/useLifeGraphStore';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { CheckCircle, TrendingUp, Zap, Target, Lightbulb, AlertTriangle, Bot, ArrowRight } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend } from 'recharts';
+import { CheckCircle, TrendingUp, Zap, Target, Lightbulb, AlertTriangle, Bot, ArrowRight, Activity, Trophy } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { aiCoachService } from '../services/aiCoach';
 
@@ -45,41 +45,52 @@ export function Dashboard() {
     }
   };
 
+  const [timeRange, setTimeRange] = useState<7 | 14 | 30>(7);
+
   // Compute progression data for charts
-  const progressionData = (() => {
-    const days = 5;
+  const topMetrics = useMemo(() => {
+    return [...metrics].sort((a, b) => b.current_value - a.current_value).slice(0, 5);
+  }, [metrics]);
+
+  const progressionData = useMemo(() => {
+    const days = timeRange;
     const data = [];
     for (let i = days - 1; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
       const dateStr = d.toISOString().split('T')[0];
-      const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
+      const dayName = timeRange === 7 
+        ? d.toLocaleDateString('en-US', { weekday: 'short' })
+        : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
       
       const dayData: any = { name: dayName };
       
-      // Find the latest log for each tracked metric on or before this day
-      // For simplicity, we just look for logs exactly on this day, or carry over previous
-      metrics.forEach(m => {
-        if (['Focus', 'Energy', 'Strength'].includes(m.name)) {
-          const log = useLifeGraphStore.getState().metricLogs
-            .filter(l => l.metric_id === m.id && l.recorded_at.startsWith(dateStr))
+      topMetrics.forEach(m => {
+        const log = useLifeGraphStore.getState().metricLogs
+          .filter(l => l.metric_id === m.id && l.recorded_at.startsWith(dateStr))
+          .sort((a, b) => new Date(b.recorded_at).getTime() - new Date(a.recorded_at).getTime())[0];
+        
+        if (log) {
+          dayData[m.name] = log.value;
+        } else {
+          const pastLog = useLifeGraphStore.getState().metricLogs
+            .filter(l => l.metric_id === m.id && new Date(l.recorded_at) < d)
             .sort((a, b) => new Date(b.recorded_at).getTime() - new Date(a.recorded_at).getTime())[0];
-          
-          if (log) {
-            dayData[m.name] = log.value;
-          } else {
-            // If no log today, try to find the most recent one before today
-            const pastLog = useLifeGraphStore.getState().metricLogs
-              .filter(l => l.metric_id === m.id && new Date(l.recorded_at) < d)
-              .sort((a, b) => new Date(b.recorded_at).getTime() - new Date(a.recorded_at).getTime())[0];
-            dayData[m.name] = pastLog ? pastLog.value : 0;
-          }
+          dayData[m.name] = pastLog ? pastLog.value : 0;
         }
       });
       data.push(dayData);
     }
     return data;
-  })();
+  }, [metrics, topMetrics, timeRange]);
+
+  const radarData = useMemo(() => {
+    return topMetrics.map(m => ({
+      subject: m.name,
+      A: m.current_value,
+      fullMark: Math.max(100, m.current_value * 1.2)
+    }));
+  }, [topMetrics]);
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
@@ -100,7 +111,7 @@ export function Dashboard() {
             <div className="w-full bg-zinc-800 rounded-full h-1.5">
               <div className="bg-emerald-500 h-1.5 rounded-full" style={{ width: `${((userStats?.xp || 0) % 100)}%` }}></div>
             </div>
-            <p className="text-xs text-zinc-500 mt-2">100 XP to next level</p>
+            <p className="text-xs text-zinc-500 mt-2">{100 - ((userStats?.xp || 0) % 100)} XP to next level</p>
           </div>
         </div>
 
@@ -244,10 +255,27 @@ export function Dashboard() {
 
         {/* Progression Chart */}
         <div className="lg:col-span-2 space-y-4">
-          <h2 className="text-xl font-semibold text-white flex items-center">
-            <TrendingUp className="w-5 h-5 mr-2 text-zinc-400" />
-            Stat Progression
-          </h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold text-white flex items-center">
+              <TrendingUp className="w-5 h-5 mr-2 text-zinc-400" />
+              Stat Progression
+            </h2>
+            <div className="flex bg-zinc-900/50 border border-zinc-800 rounded-lg p-1">
+              {[7, 14, 30].map((days) => (
+                <button
+                  key={days}
+                  onClick={() => setTimeRange(days as 7 | 14 | 30)}
+                  className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                    timeRange === days
+                      ? 'bg-zinc-800 text-white'
+                      : 'text-zinc-500 hover:text-zinc-300'
+                  }`}
+                >
+                  {days}D
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6 h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={progressionData}>
@@ -258,11 +286,89 @@ export function Dashboard() {
                   contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', color: '#f4f4f5', borderRadius: '8px' }}
                   itemStyle={{ color: '#f4f4f5' }}
                 />
-                <Line type="monotone" dataKey="Focus" stroke="#10b981" strokeWidth={2} dot={{r: 4, fill: '#10b981', strokeWidth: 0}} activeDot={{r: 6}} />
-                <Line type="monotone" dataKey="Energy" stroke="#3b82f6" strokeWidth={2} dot={{r: 4, fill: '#3b82f6', strokeWidth: 0}} activeDot={{r: 6}} />
-                <Line type="monotone" dataKey="Strength" stroke="#8b5cf6" strokeWidth={2} dot={{r: 4, fill: '#8b5cf6', strokeWidth: 0}} activeDot={{r: 6}} />
+                {topMetrics.map((m, index) => {
+                  const colors = ['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b', '#ec4899'];
+                  const color = colors[index % colors.length];
+                  return (
+                    <Line 
+                      key={m.id} 
+                      type="monotone" 
+                      dataKey={m.name} 
+                      stroke={color} 
+                      strokeWidth={2} 
+                      dot={{r: 4, fill: color, strokeWidth: 0}} 
+                      activeDot={{r: 6}} 
+                    />
+                  );
+                })}
               </LineChart>
             </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+
+      {/* Skill Tree Visualization */}
+      <div className="space-y-4">
+        <h2 className="text-xl font-semibold text-white flex items-center">
+          <Activity className="w-5 h-5 mr-2 text-zinc-400" />
+          Skill Tree Visualization
+        </h2>
+        <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6 h-[400px] flex items-center justify-center">
+          {radarData.length > 2 ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
+                <PolarGrid stroke="#27272a" />
+                <PolarAngleAxis dataKey="subject" tick={{ fill: '#a1a1aa', fontSize: 12 }} />
+                <PolarRadiusAxis angle={30} domain={[0, 'auto']} tick={{ fill: '#52525b', fontSize: 10 }} />
+                <Radar name="Level" dataKey="A" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.4} />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', color: '#f4f4f5', borderRadius: '8px' }}
+                  itemStyle={{ color: '#f4f4f5' }}
+                />
+              </RadarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="text-zinc-500 text-center">
+              <Activity className="w-12 h-12 mx-auto mb-3 opacity-20" />
+              <p>Add at least 3 metrics to see your skill tree.</p>
+            </div>
+          )}
+        </div>
+      </div>
+      {/* Achievements System */}
+      <div className="space-y-4">
+        <h2 className="text-xl font-semibold text-white flex items-center">
+          <Trophy className="w-5 h-5 mr-2 text-zinc-400" />
+          Achievements
+        </h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className={`bg-zinc-900/50 border rounded-xl p-4 flex flex-col items-center text-center transition-all ${habitLogs.length > 0 ? 'border-amber-500/50 opacity-100' : 'border-zinc-800 opacity-50 grayscale'}`}>
+            <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-3 ${habitLogs.length > 0 ? 'bg-amber-500/20 text-amber-500' : 'bg-zinc-800 text-zinc-500'}`}>
+              <CheckCircle className="w-6 h-6" />
+            </div>
+            <h4 className="font-medium text-white text-sm">First Steps</h4>
+            <p className="text-xs text-zinc-500 mt-1">Log your first habit</p>
+          </div>
+          <div className={`bg-zinc-900/50 border rounded-xl p-4 flex flex-col items-center text-center transition-all ${metrics.length >= 5 ? 'border-blue-500/50 opacity-100' : 'border-zinc-800 opacity-50 grayscale'}`}>
+            <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-3 ${metrics.length >= 5 ? 'bg-blue-500/20 text-blue-500' : 'bg-zinc-800 text-zinc-500'}`}>
+              <TrendingUp className="w-6 h-6" />
+            </div>
+            <h4 className="font-medium text-white text-sm">Data Driven</h4>
+            <p className="text-xs text-zinc-500 mt-1">Track 5+ metrics</p>
+          </div>
+          <div className={`bg-zinc-900/50 border rounded-xl p-4 flex flex-col items-center text-center transition-all ${goals.length >= 3 ? 'border-emerald-500/50 opacity-100' : 'border-zinc-800 opacity-50 grayscale'}`}>
+            <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-3 ${goals.length >= 3 ? 'bg-emerald-500/20 text-emerald-500' : 'bg-zinc-800 text-zinc-500'}`}>
+              <Target className="w-6 h-6" />
+            </div>
+            <h4 className="font-medium text-white text-sm">Ambitious</h4>
+            <p className="text-xs text-zinc-500 mt-1">Set 3+ active goals</p>
+          </div>
+          <div className={`bg-zinc-900/50 border rounded-xl p-4 flex flex-col items-center text-center transition-all ${(userStats?.level || 1) >= 5 ? 'border-purple-500/50 opacity-100' : 'border-zinc-800 opacity-50 grayscale'}`}>
+            <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-3 ${(userStats?.level || 1) >= 5 ? 'bg-purple-500/20 text-purple-500' : 'bg-zinc-800 text-zinc-500'}`}>
+              <Zap className="w-6 h-6" />
+            </div>
+            <h4 className="font-medium text-white text-sm">Level 5</h4>
+            <p className="text-xs text-zinc-500 mt-1">Reach Level 5</p>
           </div>
         </div>
       </div>

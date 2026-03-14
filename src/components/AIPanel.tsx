@@ -20,6 +20,7 @@ export function AIPanel({ onClose }: { onClose: () => void }) {
         1. Suggestions for improvement.
         2. Identify missing connections (e.g., 'Your focus goal is missing the sleep metric').
         3. Recommend relevant habits or resources.
+        Ensure any suggested metrics are general human stats (like Strength, Intelligence, Charisma, Endurance, Focus, etc.), not specific game statistics.
 
         Data:
         Metrics: ${JSON.stringify(metrics.map(m => ({ id: m.id, name: m.name, category_id: m.category_id })))}
@@ -78,10 +79,10 @@ export function AIPanel({ onClose }: { onClose: () => void }) {
         });
       });
 
-      result.habits.forEach((h: string) => {
+      result.habits.forEach((h: any) => {
         addHabit({
           user_id: userId,
-          name: h,
+          name: h.name,
           frequency: 'daily',
           color: null,
           icon: null

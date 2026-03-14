@@ -491,17 +491,41 @@ export function Goals() {
                 <p className="text-sm text-zinc-400 mt-1">{goal.description}</p>
               </div>
 
-              <div className="space-y-2 mb-4">
+              <div className="space-y-3 mb-4">
                 {goalMetrics.filter(gm => gm.goal_id === goal.id).map(gm => {
                   const metric = metrics.find(m => m.id === gm.metric_id);
                   if (!metric) return null;
+                  
+                  // Calculate individual metric progress
+                  let metricProgress = 0;
+                  const range = Math.abs(gm.target_value - gm.initial_value);
+                  if (range > 0) {
+                    if (gm.target_value > gm.initial_value) {
+                      metricProgress = Math.max(0, Math.min(100, ((metric.current_value - gm.initial_value) / range) * 100));
+                    } else {
+                      metricProgress = Math.max(0, Math.min(100, ((gm.initial_value - metric.current_value) / range) * 100));
+                    }
+                  } else {
+                    metricProgress = metric.current_value >= gm.target_value ? 100 : 0;
+                  }
+
                   return (
-                    <div key={gm.id} className="flex justify-between items-center text-[10px] font-medium uppercase tracking-wider">
-                      <span className="text-zinc-500">{metric.name}</span>
-                      <span className="text-zinc-400">
-                        {gm.initial_value} → {gm.target_value}
-                        <span className="text-zinc-600 ml-1">({metric.current_value})</span>
-                      </span>
+                    <div key={gm.id} className="space-y-1">
+                      <div className="flex justify-between items-center text-[10px] font-medium uppercase tracking-wider">
+                        <span className="text-zinc-400">{metric.name}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-zinc-300">
+                            {metric.current_value} <span className="text-zinc-600 normal-case">/ {gm.target_value}</span>
+                          </span>
+                          <span className="text-indigo-400 font-mono">{metricProgress.toFixed(0)}%</span>
+                        </div>
+                      </div>
+                      <div className="w-full bg-zinc-800/50 rounded-full h-1">
+                        <div 
+                          className="bg-indigo-500/70 h-1 rounded-full transition-all duration-500" 
+                          style={{ width: `${metricProgress}%` }}
+                        ></div>
+                      </div>
                     </div>
                   );
                 })}
